@@ -32,7 +32,7 @@ public:
   {
     // Intialize envelope
     mAmpEnv.curve(0); // make segments lines
-    mAmpEnv.levels(0, 1, 1, 0);
+    mAmpEnv.levels(0, 1.0, 1.0, 0);
     mAmpEnv.sustainPoint(2); // Make point 2 sustain until a release is issued
 
     // This is a quick way to create parameters for the voice. Trigger
@@ -44,7 +44,9 @@ public:
     createInternalTriggerParameter("amplitude", 0.3, 0.0, 1.0);
     createInternalTriggerParameter("frequency", 60, 20, 5000);
     createInternalTriggerParameter("attackTime", 0.1, 0.01, 3.0);
+    createInternalTriggerParameter("decayTime", 0.1, 0.1, 10.0);
     createInternalTriggerParameter("releaseTime", 0.1, 0.1, 10.0);
+    createInternalTriggerParameter("sustainLevel", 1.0, 0.01, 1.0);
     createInternalTriggerParameter("pan", 0.0, -1.0, 1.0);
   }
 
@@ -58,7 +60,14 @@ public:
     // Parameters will update values once per audio callback because they
     // are outside the sample processing loop.
     mOsc.freq(getInternalParameterValue("frequency"));
+
+   mAmpEnv.levels(0, 
+                   1,
+                     getInternalParameterValue("sustainLevel"),
+                   0);
+
     mAmpEnv.lengths()[0] = getInternalParameterValue("attackTime");
+    mAmpEnv.lengths()[1] = getInternalParameterValue("decayTime");
     mAmpEnv.lengths()[2] = getInternalParameterValue("releaseTime");
     mPan.pos(getInternalParameterValue("pan"));
     while (io())
@@ -75,18 +84,10 @@ public:
     if (mAmpEnv.done())
       free();
   }
-
-  // The graphics processing function
-  void onProcess(Graphics &g) override
-  {
-    // empty if there are no graphics to draw
-  }
-
   // The triggering functions just need to tell the envelope to start or release
   // The audio processing function checks when the envelope is done to remove
   // the voice from the processing chain.
   void onTriggerOn() override { mAmpEnv.reset(); }
-
   void onTriggerOff() override { mAmpEnv.release(); }
 };
 
@@ -100,7 +101,7 @@ public:
   SynthGUIManager<SineEnv> synthManager{"SineEnv"};
 
   // This function is called right after the window is created
-  // It provides a graphics context to initialize ParameterGUI
+  // It provides a grphics context to initialize ParameterGUI
   // It's also a good place to put things that should
   // happen once at startup.
   void onCreate() override
@@ -129,16 +130,16 @@ public:
     // The GUI is prepared here
     imguiBeginFrame();
     // Draw a window that contains the synth control panel
-    // synthManager.drawSynthControlPanel();
+    synthManager.drawSynthControlPanel();
     imguiEndFrame();
   }
- 
+
   // The graphics callback function.
   void onDraw(Graphics &g) override
   {
     g.clear();
     // Render the synth's graphics
-    //synthManager.render(g);
+    synthManager.render(g);
 
     // GUI is drawn here
     imguiDraw();
@@ -180,7 +181,7 @@ public:
     int midiNote = asciiToMIDI(k.key());
     if (midiNote > 0)
     {
-      // synthManager.triggerOff(midiNote);
+      synthManager.triggerOff(midiNote);
     }
     return true;
   }
